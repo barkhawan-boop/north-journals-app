@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Northern Iraq Journals Search</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Kurdistan Region Academic Research</p>
+        <h1>Northern Iraq Journals Search</h1>
+      </div>
+      <nav class="language-switcher" aria-label="Language">
+        <button data-lang="en" class="active" type="button">EN</button>
+        <button data-lang="ku" type="button">کوردی</button>
+        <button data-lang="ar" type="button">العربية</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="search-panel" aria-labelledby="search-title">
+        <div class="search-copy">
+          <h2 id="search-title" data-i18n="searchTitle">Search Kurdish-region journals</h2>
+          <p data-i18n="searchHint">Find articles by topic, author, journal, university, city, or keyword in English, Sorani, Badini, and Arabic.</p>
+        </div>
+        <form id="search-form" class="search-form">
+          <label for="query" data-i18n="keyword">Keyword</label>
+          <div class="search-row">
+            <input id="query" name="query" type="search" autocomplete="off" placeholder="water, پزیشکی, زانکۆ, تعليم">
+            <button type="submit" data-i18n="searchButton">Search</button>
+          </div>
+          <div class="filters">
+            <label>
+              <span data-i18n="institutionType">Institution type</span>
+              <select id="type-filter">
+                <option value="all" data-i18n="all">All</option>
+                <option value="public" data-i18n="public">Public</option>
+                <option value="private" data-i18n="private">Private</option>
+              </select>
+            </label>
+            <label>
+              <span data-i18n="subject">Subject</span>
+              <select id="subject-filter">
+                <option value="all" data-i18n="all">All</option>
+              </select>
+            </label>
+          </div>
+        </form>
+      </section>
+
+      <section class="stats" aria-label="Catalog statistics">
+        <article>
+          <strong id="institution-count">0</strong>
+          <span data-i18n="institutions">Institutions</span>
+        </article>
+        <article>
+          <strong id="journal-count">0</strong>
+          <span data-i18n="journals">Journals</span>
+        </article>
+        <article>
+          <strong id="article-count">0</strong>
+          <span data-i18n="seedArticles">Seed Articles</span>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <aside class="catalog-panel" aria-labelledby="catalog-title">
+          <h2 id="catalog-title" data-i18n="catalogTitle">Recognised universities</h2>
+          <div id="institution-list" class="institution-list"></div>
+        </aside>
+
+        <section class="results-panel" aria-live="polite">
+          <div class="results-heading">
+            <div>
+              <p class="eyebrow" id="result-count">0 results</p>
+              <h2 data-i18n="resultsTitle">Results</h2>
+            </div>
+            <select id="citation-style" aria-label="Citation style">
+              <option value="apa">APA</option>
+              <option value="mla">MLA</option>
+              <option value="chicago">Chicago</option>
+              <option value="bibtex">BibTeX</option>
+            </select>
+          </div>
+          <div id="results" class="results"></div>
+        </section>
+      </section>
+
+      <section class="tool-panel" aria-labelledby="paraphrase-title">
+        <div>
+          <p class="eyebrow" data-i18n="assistantTools">Research tools</p>
+          <h2 id="paraphrase-title" data-i18n="paraphraseTitle">Paraphrasing helper</h2>
+          <p data-i18n="paraphraseNote">Use this for drafting support only. Keep citations and check the meaning before submission.</p>
+        </div>
+        <div class="paraphrase-grid">
+          <textarea id="paraphrase-input" placeholder="Paste a short paragraph here"></textarea>
+          <div>
+            <div class="tool-actions">
+              <select id="paraphrase-tone">
+                <option value="academic" data-i18n="academicTone">Academic</option>
+                <option value="simple" data-i18n="simpleTone">Simple</option>
+              </select>
+              <button id="paraphrase-button" type="button" data-i18n="paraphraseButton">Paraphrase</button>
+            </div>
+            <textarea id="paraphrase-output" readonly placeholder="Paraphrased text"></textarea>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <template id="result-template">
+      <article class="result-card">
+        <div class="result-main">
+          <div class="result-meta"></div>
+          <h3></h3>
+          <p class="localized-title"></p>
+          <p class="summary"></p>
+          <div class="tags"></div>
+          <div class="actions">
+            <a class="pdf-link" target="_blank" rel="noreferrer">PDF</a>
+            <button class="copy-citation" type="button">Copy citation</button>
+            <button class="copy-summary" type="button">Copy summary</button>
+          </div>
+        </div>
+        <dl class="journal-metrics">
+          <div><dt>Journal</dt><dd class="journal-name"></dd></div>
+          <div><dt>University</dt><dd class="institution-name"></dd></div>
+          <div><dt>Impact factor</dt><dd class="impact-factor"></dd></div>
+          <div><dt>Ranking</dt><dd class="ranking"></dd></div>
+        </dl>
+        <pre class="citation"></pre>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
