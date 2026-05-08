@@ -1,7 +1,7 @@
 const translations = {
   en: {
     searchTitle: "Search Kurdish-region journals",
-    searchHint: "Find articles by topic, author, journal, university, city, or keyword in English, Sorani, Badini, and Arabic.",
+    searchHint: "Find articles and official journal sources by topic, author, journal, university, city, or keyword.",
     keyword: "Keyword",
     searchButton: "Search",
     institutionType: "Institution type",
@@ -20,16 +20,18 @@ const translations = {
     academicTone: "Academic",
     simpleTone: "Simple",
     paraphraseButton: "Paraphrase",
-    noResults: "No matches yet. Try a broader keyword such as Kurdish, water, education, medical, digital, Erbil, Duhok, or Sulaimani.",
+    noResults: "No matches yet. Try a broader keyword such as Zanco, Soran, Koya, medical, computer, education, law, or journal.",
     pdfUnavailable: "PDF unavailable",
     copied: "Copied",
     copyCitation: "Copy citation",
     copySummary: "Copy summary",
-    score: "score"
+    score: "score",
+    sourceLink: "Source link",
+    openSource: "Open source"
   },
   ku: {
     searchTitle: "گەڕان لە گۆڤارە زانستییەکانی هەرێمی کوردستان",
-    searchHint: "بە بابەت، نووسەر، گۆڤار، زانکۆ، شار یان وشەی سەرەکی بە ئینگلیزی، سۆرانی، بادینی و عەرەبی بگەڕێ.",
+    searchHint: "بە بابەت، نووسەر، گۆڤار، زانکۆ، شار یان وشەی سەرەکی بگەڕێ.",
     keyword: "وشەی سەرەکی",
     searchButton: "گەڕان",
     institutionType: "جۆری دامەزراوە",
@@ -44,20 +46,22 @@ const translations = {
     resultsTitle: "ئەنجامەکان",
     assistantTools: "ئامرازەکانی توێژەر",
     paraphraseTitle: "یارمەتیدەری داڕشتنەوە",
-    paraphraseNote: "تەنها بۆ یارمەتی نووسین بەکاری بهێنە. سەرچاوەکان بهێڵەوە و ماناکە پێش پێشکەشکردن بپشکنە.",
+    paraphraseNote: "تەنها بۆ یارمەتی نووسین بەکاری بهێنە و سەرچاوەکان بپارێزە.",
     academicTone: "ئەکادیمی",
     simpleTone: "سادە",
     paraphraseButton: "داڕشتنەوە",
-    noResults: "هیچ ئەنجامێک نییە. وشەیەکی فراوانتر تاقی بکەرەوە وەک Kurdish، water، education، medical، digital، Erbil، Duhok یان Sulaimani.",
+    noResults: "هیچ ئەنجامێک نییە. وشەیەکی فراوانتر تاقی بکەرەوە وەک Zanco، Soran، Koya، medical، computer، education، law یان journal.",
     pdfUnavailable: "PDF بەردەست نییە",
     copied: "کۆپی کرا",
     copyCitation: "کۆپی کردنی سەرچاوە",
     copySummary: "کۆپی کردنی پوختە",
-    score: "پلە"
+    score: "پلە",
+    sourceLink: "لینکی سەرچاوە",
+    openSource: "کردنەوەی سەرچاوە"
   },
   ar: {
     searchTitle: "البحث في مجلات إقليم كردستان",
-    searchHint: "ابحث حسب الموضوع أو المؤلف أو المجلة أو الجامعة أو المدينة أو الكلمة المفتاحية بالإنكليزية والسورانية والبادينية والعربية.",
+    searchHint: "ابحث حسب الموضوع أو المؤلف أو المجلة أو الجامعة أو المدينة أو الكلمة المفتاحية.",
     keyword: "الكلمة المفتاحية",
     searchButton: "بحث",
     institutionType: "نوع المؤسسة",
@@ -72,16 +76,18 @@ const translations = {
     resultsTitle: "النتائج",
     assistantTools: "أدوات الباحث",
     paraphraseTitle: "مساعد إعادة الصياغة",
-    paraphraseNote: "استخدمه للمساعدة في المسودة فقط. حافظ على الاستشهادات وراجع المعنى قبل التسليم.",
+    paraphraseNote: "استخدمه للمساعدة في المسودة فقط وحافظ على الاستشهادات.",
     academicTone: "أكاديمي",
     simpleTone: "بسيط",
     paraphraseButton: "إعادة الصياغة",
-    noResults: "لا توجد نتائج. جرب كلمة أوسع مثل Kurdish أو water أو education أو medical أو digital أو Erbil أو Duhok أو Sulaimani.",
+    noResults: "لا توجد نتائج. جرب كلمة أوسع مثل Zanco أو Soran أو Koya أو medical أو computer أو education أو law أو journal.",
     pdfUnavailable: "PDF غير متاح",
     copied: "تم النسخ",
     copyCitation: "نسخ الاستشهاد",
     copySummary: "نسخ الملخص",
-    score: "درجة"
+    score: "درجة",
+    sourceLink: "رابط المصدر",
+    openSource: "فتح المصدر"
   }
 };
 
@@ -131,7 +137,7 @@ async function loadCatalog() {
   state.catalog = await response.json();
 
   $("#institution-count").textContent = state.catalog.institutions.length;
-  $("#journal-count").textContent = state.catalog.journals.length;
+  $("#journal-count").textContent = state.catalog.journals.length + (state.catalog.source_count || 0);
   $("#article-count").textContent = state.catalog.article_count;
 
   const subjectFilter = $("#subject-filter");
@@ -184,7 +190,13 @@ function renderResults() {
   }
 
   const style = $("#citation-style").value;
-  state.results.forEach((article) => {
+  state.results.forEach((item) => {
+    if (item.kind === "source") {
+      renderSourceResult(item);
+      return;
+    }
+
+    const article = item;
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".result-card");
     const citation = article.citations[style] || article.citations.apa;
@@ -228,6 +240,64 @@ function renderResults() {
 
     resultsEl.appendChild(card);
   });
+}
+
+function renderSourceResult(source) {
+  const card = document.createElement("article");
+  card.className = "result-card source-card";
+
+  const main = document.createElement("div");
+  main.className = "result-main";
+
+  const meta = document.createElement("div");
+  meta.className = "result-meta";
+  meta.textContent = `${t("sourceLink")} · ${source.institution || "Directory"} · ${t("score")} ${source.score}`;
+
+  const title = document.createElement("h3");
+  title.textContent = source.title;
+
+  const summary = document.createElement("p");
+  summary.className = "summary";
+  summary.textContent = source.summary || source.url;
+
+  const tags = document.createElement("div");
+  tags.className = "tags";
+  source.subjects.slice(0, 8).forEach((subject) => {
+    const tag = document.createElement("span");
+    tag.textContent = subject;
+    tags.appendChild(tag);
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const link = document.createElement("a");
+  link.href = source.url;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = t("openSource");
+  actions.appendChild(link);
+
+  main.append(meta, title, summary, tags, actions);
+
+  const metrics = document.createElement("dl");
+  metrics.className = "journal-metrics";
+  const institutionBlock = document.createElement("div");
+  const institutionLabel = document.createElement("dt");
+  const institutionValue = document.createElement("dd");
+  institutionLabel.textContent = "Institution";
+  institutionValue.textContent = source.institution || "Directory";
+  institutionBlock.append(institutionLabel, institutionValue);
+
+  const urlBlock = document.createElement("div");
+  const urlLabel = document.createElement("dt");
+  const urlValue = document.createElement("dd");
+  urlLabel.textContent = "URL";
+  urlValue.textContent = source.url;
+  urlBlock.append(urlLabel, urlValue);
+  metrics.append(institutionBlock, urlBlock);
+
+  card.append(main, metrics);
+  resultsEl.appendChild(card);
 }
 
 async function copyText(text, button) {

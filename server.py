@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 BASE_DIR = Path(__file__).resolve().parent
 PUBLIC_DIR = BASE_DIR / "public"
 DATA_PATH = BASE_DIR / "data" / "catalog.json"
+SOURCE_LINKS_PATH = BASE_DIR / "data" / "source_links.json"
 
 SCRIPT_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+|[A-Za-z0-9]+")
 STOP_WORDS = {
@@ -52,6 +53,11 @@ EXPANSIONS = {
     "medical": {"medicine", "health", "پزیشکی", "صحة", "nursing"},
     "engineering": {"technology", "polytechnic", "ئەندازیاری", "هندسة"},
     "digital": {"e-learning", "online", "رقمنة", "دیجیتاڵ"},
+    "computer": {"computing", "computer science", "software", "programming", "it", "ai", "artificial intelligence", "کۆمپیوتەر", "حاسوب"},
+    "computers": {"computer", "computing", "software", "programming", "it"},
+    "ai": {"artificial intelligence", "machine learning", "computer", "software"},
+    "law": {"legal", "human rights", "یاسا", "قانون"},
+    "agriculture": {"farming", "soil", "crop", "کشتوکاڵ", "زراعة"},
     "erbil": {"hawler", "هەولێر", "أربيل"},
     "sulaimani": {"slemani", "سلێمانی", "السليمانية"},
     "duhok": {"دهۆک", "دهوك", "badini"},
@@ -65,12 +71,25 @@ class SearchHit:
     reasons: list[str]
 
 
+@dataclass(frozen=True)
+class SourceHit:
+    score: int
+    source: dict[str, Any]
+    reasons: list[str]
+
+
 def load_catalog() -> dict[str, Any]:
     with DATA_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
+def load_source_links() -> list[dict[str, Any]]:
+    with SOURCE_LINKS_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 CATALOG = load_catalog()
+SOURCE_LINKS = load_source_links()
 INSTITUTIONS = {item["id"]: item for item in CATALOG["institutions"]}
 JOURNALS = {item["id"]: item for item in CATALOG["journals"]}
 
@@ -104,6 +123,17 @@ def searchable_text(article: dict[str, Any], journal: dict[str, Any], institutio
         " ".join(article.get("keywords", [])),
         " ".join(journal.get("subjects", [])),
         " ".join(article.get("authors", [])),
+    ]
+    return " ".join(parts).lower()
+
+
+def searchable_source_text(source: dict[str, Any]) -> str:
+    parts = [
+        source.get("title", ""),
+        source.get("url", ""),
+        source.get("institution", ""),
+        source.get("summary", ""),
+        " ".join(source.get("subjects", [])),
     ]
     return " ".join(parts).lower()
 
@@ -197,12 +227,70 @@ def search_articles(query: str, institution_type: str = "all", subject: str = "a
             if keyword_matches:
                 score += len(keyword_matches) * 12
                 reasons.append("indexed keyword match")
+            loose_matches = [term for term in query_terms if term in text and term not in overlap]
+            if loose_matches:
+                score += len(loose_matches) * 5
+                reasons.append("partial text match")
 
         if score > 0:
             hits.append(SearchHit(score=score, article=article, reasons=reasons))
 
     hits.sort(key=lambda hit: (hit.score, hit.article.get("year", 0)), reverse=True)
     return [enrich_article(hit.article, hit.score, hit.reasons) for hit in hits]
+
+
+def enrich_source(source: dict[str, Any], score: int = 0, reasons: list[str] | None = None) -> dict[str, Any]:
+    result = dict(source)
+    result["kind"] = "source"
+    result["score"] = score
+    result["reasons"] = reasons or []
+    return result
+
+
+def search_sources(query: str, subject: str = "all") -> list[dict[str, Any]]:
+    query_terms = expanded_query_terms(query)
+    hits: list[SourceHit] = []
+
+    for source in SOURCE_LINKS:
+        if subject != "all" and subject not in source.get("subjects", []):
+            continue
+
+        text = searchable_source_text(source)
+        source_tokens = set(tokens(text))
+        score = 0
+        reasons: list[str] = []
+
+        if not query_terms:
+            score = 1
+            reasons.append("source directory")
+        else:
+            overlap = query_terms & source_tokens
+            if overlap:
+                score += len(overlap) * 10
+                reasons.append("source keyword match: " + ", ".join(sorted(overlap)[:5]))
+            title_text = source.get("title", "").lower()
+            title_matches = [term for term in query_terms if term in title_text]
+            if title_matches:
+                score += len(title_matches) * 15
+                reasons.append("source title match")
+            loose_matches = [term for term in query_terms if term in text and term not in overlap]
+            if loose_matches:
+                score += len(loose_matches) * 5
+                reasons.append("source partial match")
+
+        if score > 0:
+            hits.append(SourceHit(score=score, source=source, reasons=reasons))
+
+    hits.sort(key=lambda hit: (hit.score, hit.source.get("title", "")), reverse=True)
+    return [enrich_source(hit.source, hit.score, hit.reasons) for hit in hits]
+
+
+def search_all(query: str, institution_type: str = "all", subject: str = "all") -> list[dict[str, Any]]:
+    article_results = search_articles(query, institution_type, subject)
+    for article in article_results:
+        article["kind"] = "article"
+    source_results = search_sources(query, subject)
+    return sorted(article_results + source_results, key=lambda item: item.get("score", 0), reverse=True)
 
 
 def paraphrase_text(text: str, tone: str = "academic") -> str:
@@ -260,8 +348,12 @@ class AppHandler(SimpleHTTPRequestHandler):
                     "metadata": CATALOG["metadata"],
                     "institutions": CATALOG["institutions"],
                     "journals": CATALOG["journals"],
+                    "source_count": len(SOURCE_LINKS),
                     "article_count": len(CATALOG["articles"]),
-                    "subjects": sorted({subject for journal in CATALOG["journals"] for subject in journal["subjects"]}),
+                    "subjects": sorted(
+                        {subject for journal in CATALOG["journals"] for subject in journal["subjects"]}
+                        | {subject for source in SOURCE_LINKS for subject in source.get("subjects", [])}
+                    ),
                 }
             )
             return
@@ -271,12 +363,12 @@ class AppHandler(SimpleHTTPRequestHandler):
             query = unquote(params.get("q", [""])[0]).strip()
             institution_type = params.get("type", ["all"])[0]
             subject = params.get("subject", ["all"])[0]
-            results = search_articles(query, institution_type, subject)
+            results = search_all(query, institution_type, subject)
             self.send_json({"query": query, "count": len(results), "results": results})
             return
 
         if parsed.path == "/api/health":
-            self.send_json({"ok": True, "catalog_records": len(CATALOG["articles"])})
+            self.send_json({"ok": True, "catalog_records": len(CATALOG["articles"]), "source_links": len(SOURCE_LINKS)})
             return
 
         super().do_GET()
