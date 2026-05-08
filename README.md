@@ -60,6 +60,24 @@ Example:
 python import_articles.py articles.csv
 ```
 
+## Harvest IASJ Candidates
+
+The app includes an experimental IASJ harvester. It discovers issue links from IASJ journal, institution, or subject pages, then imports candidate article rows into `data/catalog.json` for review.
+
+Dry run:
+
+```powershell
+python harvest_iasj.py --dry-run --issue-limit 3
+```
+
+Import from a specific IASJ page:
+
+```powershell
+python harvest_iasj.py --seed-url "https://iasj.rdd.edu.iq/journals/journal/view/427" --issue-limit 5
+```
+
+Review imported records before publishing because public journal pages vary in structure.
+
 ## Data Model
 
 Main data lives in `data/catalog.json`:
