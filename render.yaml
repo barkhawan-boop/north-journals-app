@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: north-journals-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py --host 0.0.0.0
